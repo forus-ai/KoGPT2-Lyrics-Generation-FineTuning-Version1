@@ -50,32 +50,35 @@ class Read_Dataset(Dataset):
 		self.tokenizer = tokenizer
 		file = open(self.file_path, 'r', encoding='utf-8')
 
-
+		lines = file.read()
 		lines = lines.split("<|endoftext|>")
-		lines = [line.split("\n") for line in lines]
-		lines = [str(line) for line in lines]
-		
+		lines = [tokenizer(line) for line in lines]
 		datasets = []
-		
-		print("tokenizer start")
-		for line in lines:
-			now = ""
-			for i, l in enumerate(line):
-				if i % 20 == 0 and i != 0:
-					datasets.append(now)
-					now = ""
-				now = now + "\n" + l
-				if i == len(line) - 1:
-					datasets.append(now)
 
-		print("tokenizer ending")
+		for i, line in enumerate(lines):
+			line = tokenizer(line)
+			while (1):
+				if len(line) > 1020:
+					datasets.append(line[:1020])
+					line = line[:1020]
+				else:
+					datasets.append(line)
+					break
+
+		#now = ""
+		#for i, line in enumerate(lines):
+		# 	if i % 20 == 0 and i != 0:
+		# 		datasets.append(now)
+		# 		now = ""
+		# 	now = now + "\n" + line
+
 		for line in datasets:
 			if not line:
 				break
 			if len(line) < 3:
 				continue
 
-			toeknized_line = tokenizer(line[:-1])
+			toeknized_line = line[:-1]
 
 			### 여기부터는 그대로
 			index_of_words = [vocab[vocab.bos_token],] + vocab[toeknized_line]+ [vocab[vocab.eos_token]]

@@ -19,18 +19,15 @@ parser.add_argument('--epoch', type=int, default=200,
 					help="epoch 를 통해서 학습 범위를 조절합니다.")
 parser.add_argument('--save_path', type=str, default='./checkpoint/',
 					help="학습 결과를 저장하는 경로입니다.")
-parser.add_argument('--load_path', type=str, default='', #./checkpoint/KoGPT2_checkpoint_long.tar
+parser.add_argument('--load_path', type=str, default='./checkpoint/Alls/KoGPT2_checkpoint_296000.tar', #
 					help="학습된 결과를 불러오는 경로입니다.")
 parser.add_argument('--samples', type=str, default="samples/",
-					help="학습된 결과를 불러오는 경로입니다.")
+					help="생성 결과를 저장할 경로입니다.")
 parser.add_argument('--data_file_path', type=str, default='dataset/lyrics_dataset.txt',
-					help="학습된 결과를 불러오는 경로입니다.")
+					help="학습할 데이터를 불러오는 경로입니다.")
 parser.add_argument('--batch_size', type=int, default=8,
 					help="batch_size 를 지정합니다.")
 args = parser.parse_args()
-
-ctx = 'cuda'
-cachedir = '~/kogpt2/'
 
 pytorch_kogpt2 = {
 	'url':
@@ -38,6 +35,7 @@ pytorch_kogpt2 = {
 	'fname': 'pytorch_kogpt2_676e9bcfa7.params',
 	'chksum': '676e9bcfa7'
 }
+
 kogpt2_config = {
 	"initializer_range": 0.02,
 	"layer_norm_epsilon": 1e-05,
@@ -48,7 +46,6 @@ kogpt2_config = {
 	"n_positions": 1024,
 	"vocab_size": 50000
 }
-
 
 def get_gpu_memory_map():
 	"""Get the current gpu usage.
@@ -69,8 +66,10 @@ def get_gpu_memory_map():
 	gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
 	return gpu_memory_map
 
-
 def main(epoch, save_path, load_path, samples, data_file_path, batch_size):
+	ctx = 'cuda'
+	cachedir = '~/kogpt2/'
+
 	summary = SummaryWriter()
 
 	# download model
@@ -121,22 +120,17 @@ def main(epoch, save_path, load_path, samples, data_file_path, batch_size):
 														 bos_token='<s>',
 														 eos_token='</s>')
 
+
 	tok_path = get_tokenizer()
 	model, vocab = kogpt2model, vocab_b_obj
-	sentencepieceTokenizer = SentencepieceTokenizer(tok_path)
+	tok = SentencepieceTokenizer(tok_path)
 
-	dataset = Read_Dataset(data_file_path, vocab,sentencepieceTokenizer)
+	dataset = Read_Dataset(data_file_path, vocab, tok)
 	data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 
 	learning_rate = 3e-5
 	criterion = torch.nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-	## train
-	tok_path = get_tokenizer()
-	model, vocab = kogpt2model, vocab_b_obj
-	model = model.to(ctx)
-	tok = SentencepieceTokenizer(tok_path)
 
 	print('KoGPT-2 Transfer Learning Start')
 	avg_loss = (0.0, 0.0)
@@ -163,7 +157,7 @@ def main(epoch, save_path, load_path, samples, data_file_path, batch_size):
 			# generator 진행
 			if (count > 0 and count % 1000 == 0) or (len(data) < batch_size):
 				sent = sample_sequence(model.to("cpu"), tok, vocab, sent="사랑", text_size=100, temperature=0.7, top_p=0.8, top_k=40)
-
+				sent = sent.replace("<unused0>", "\n")
 				print(sent)
 
 				summary.add_text('Text', sent, count)
@@ -189,7 +183,6 @@ def main(epoch, save_path, load_path, samples, data_file_path, batch_size):
 					}, save_path + 'KoGPT2_checkpoint_' + str(count) + '.tar')
 				except:
 					pass
-
 
 if __name__ == "__main__":
 	main(args.epoch, args.save_path, args.load_path, args.samples, args.data_file_path, args.batch_size)
