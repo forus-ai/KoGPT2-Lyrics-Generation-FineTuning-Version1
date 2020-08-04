@@ -49,9 +49,7 @@ class Read_Dataset(Dataset):
 		self.vocab =vocab
 		self.tokenizer = tokenizer
 		file = open(self.file_path, 'r', encoding='utf-8')
-
-
-		lines = lines.split("<|endoftext|>")
+		
 		lines = [line.split("\n") for line in lines]
 		lines = [str(line) for line in lines]
 		
